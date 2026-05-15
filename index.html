@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="Εφαρμογή διαχείρισης κρατήσεων ξενοδοχείου με ημερολόγιο διαθεσιμότητας, κρατήσεις, πληρωμές και housekeeping.">
+  <title>Hotel Reservation Manager</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">H</div>
+        <div>
+          <strong id="hotelNameSide">Hotel PMS</strong>
+          <span>κρατήσεις · δωμάτια · πληρωμές</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Κύρια πλοήγηση">
+        <button class="nav-link active" data-view="dashboard">Πίνακας ελέγχου</button>
+        <button class="nav-link" data-view="calendar">Ημερολόγιο</button>
+        <button class="nav-link" data-view="availability">Διαθεσιμότητα</button>
+        <button class="nav-link" data-view="bookings">Κρατήσεις</button>
+        <button class="nav-link" data-view="rooms">Δωμάτια</button>
+        <button class="nav-link" data-view="housekeeping">Καθαριότητα</button>
+        <button class="nav-link" data-view="payments">Πληρωμές</button>
+        <button class="nav-link" data-view="reports">Αναφορές</button>
+        <button class="nav-link" data-view="settings">Ρυθμίσεις</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="ghost small" id="exportQuickBtn">Εξαγωγή backup</button>
+        <span id="storageInfo">Τοπική αποθήκευση</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn" id="menuBtn" aria-label="Μενού">☰</button>
+        <div>
+          <h1 id="pageTitle">Πίνακας ελέγχου</h1>
+          <p id="pageSubtitle">Άμεση εικόνα πληρότητας, αφίξεων, αναχωρήσεων και οικονομικών.</p>
+        </div>
+        <div class="topbar-actions">
+          <label class="today-picker">Ημερομηνία ελέγχου
+            <input type="date" id="businessDate">
+          </label>
+          <button class="primary" id="newBookingTopBtn">+ Νέα κράτηση</button>
+        </div>
+      </header>
+
+      <section class="alert hidden" id="globalAlert"></section>
+
+      <section class="view active" id="view-dashboard" data-title="Πίνακας ελέγχου" data-subtitle="Άμεση εικόνα πληρότητας, αφίξεων, αναχωρήσεων και οικονομικών.">
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="grid two">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Αφίξεις σήμερα</h2>
+                <p>Κρατήσεις με ημερομηνία άφιξης την επιλεγμένη ημέρα.</p>
+              </div>
+            </div>
+            <div class="table-wrap compact"><table id="arrivalsTable"></table></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Αναχωρήσεις σήμερα</h2>
+                <p>Δωμάτια που πρέπει να ελεγχθούν για καθαριότητα.</p>
+              </div>
+            </div>
+            <div class="table-wrap compact"><table id="departuresTable"></table></div>
+          </article>
+        </div>
+
+        <div class="grid two">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Πιθανές συγκρούσεις</h2>
+                <p>Έλεγχος διπλοκρατήσεων ανά δωμάτιο και ημερομηνία.</p>
+              </div>
+              <button class="ghost" id="runConflictsBtn">Έλεγχος</button>
+            </div>
+            <div id="conflictsBox" class="empty-state">Δεν εντοπίστηκαν διπλοκρατήσεις.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Γρήγορη διαθεσιμότητα</h2>
+                <p>Βάλε διάστημα και δες άμεσα διαθέσιμα δωμάτια.</p>
+              </div>
+            </div>
+            <form class="inline-form" id="quickAvailabilityForm">
+              <label>Άφιξη <input type="date" id="quickArrival" required></label>
+              <label>Αναχώρηση <input type="date" id="quickDeparture" required></label>
+              <label>Τύπος
+                <select id="quickRoomType"><option value="">Όλοι</option></select>
+              </label>
+              <button class="primary" type="submit">Έλεγχος</button>
+            </form>
+            <div id="quickAvailabilityResult" class="chips"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-calendar" data-title="Ημερολόγιο δωματίων" data-subtitle="Οπτικό tape chart ανά δωμάτιο και ημέρα.">
+        <article class="panel">
+          <div class="panel-head calendar-head">
+            <div>
+              <h2>Tape chart</h2>
+              <p>Κάνε κλικ σε ελεύθερη ημέρα για νέα κράτηση ή σε κατειλημμένη για επεξεργασία.</p>
+            </div>
+            <div class="calendar-controls">
+              <button class="ghost" id="prevCalendarBtn">‹ 14 ημέρες</button>
+              <label>Έναρξη <input type="date" id="calendarStart"></label>
+              <label>Ημέρες <input type="number" id="calendarDays" min="7" max="62" value="31"></label>
+              <button class="ghost" id="nextCalendarBtn">14 ημέρες ›</button>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i class="legend-dot confirmed"></i>Επιβεβαιωμένη</span>
+            <span><i class="legend-dot checked-in"></i>Check-in</span>
+            <span><i class="legend-dot checked-out"></i>Check-out</span>
+            <span><i class="legend-dot pending"></i>Προσωρινή</span>
+            <span><i class="legend-dot maintenance"></i>Συντήρηση/εκτός</span>
+          </div>
+          <div class="calendar-wrap" id="calendarWrap"></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-availability" data-title="Έλεγχος διαθεσιμότητας" data-subtitle="Αναζήτηση ελεύθερων δωματίων ανά περίοδο, τύπο και άτομα.">
+        <article class="panel">
+          <form class="filters" id="availabilityForm">
+            <label>Άφιξη <input type="date" id="availabilityArrival" required></label>
+            <label>Αναχώρηση <input type="date" id="availabilityDeparture" required></label>
+            <label>Τύπος
+              <select id="availabilityType"><option value="">Όλοι</option></select>
+            </label>
+            <label>Ελάχιστα άτομα <input type="number" id="availabilityGuests" min="1" value="1"></label>
+            <button class="primary" type="submit">Βρες δωμάτια</button>
+          </form>
+          <div id="availabilityResults" class="room-cards"></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-bookings" data-title="Κρατήσεις" data-subtitle="Καταχώρηση, αλλαγή, ακύρωση και έλεγχος υπολοίπων.">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Λίστα κρατήσεων</h2>
+              <p>Οι ακυρωμένες κρατήσεις δεν δεσμεύουν δωμάτια.</p>
+            </div>
+            <div class="actions-row">
+              <button class="ghost" id="printBookingsBtn">Εκτύπωση</button>
+              <button class="primary" id="newBookingBtn">+ Νέα κράτηση</button>
+            </div>
+          </div>
+          <div class="filters">
+            <label>Αναζήτηση <input type="search" id="bookingSearch" placeholder="Πελάτης, τηλέφωνο, δωμάτιο, ID"></label>
+            <label>Κατάσταση <select id="bookingStatusFilter"><option value="">Όλες</option></select></label>
+            <label>Από <input type="date" id="bookingFromFilter"></label>
+            <label>Έως <input type="date" id="bookingToFilter"></label>
+            <button class="ghost" id="clearBookingFiltersBtn">Καθαρισμός</button>
+          </div>
+          <div class="table-wrap"><table id="bookingsTable"></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-rooms" data-title="Δωμάτια" data-subtitle="Μητρώο δωματίων, τύποι, τιμές και λειτουργική κατάσταση.">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Μητρώο δωματίων</h2>
+              <p>Τα ανενεργά ή εκτός λειτουργίας δωμάτια δεν εμφανίζονται ως διαθέσιμα.</p>
+            </div>
+            <button class="primary" id="newRoomBtn">+ Νέο δωμάτιο</button>
+          </div>
+          <div class="filters">
+            <label>Αναζήτηση <input type="search" id="roomSearch" placeholder="Αριθμός, τύπος, όροφος"></label>
+            <label>Τύπος <select id="roomTypeFilter"><option value="">Όλοι</option></select></label>
+            <label>Κατάσταση <select id="roomStatusFilter"><option value="">Όλες</option></select></label>
+          </div>
+          <div class="table-wrap"><table id="roomsTable"></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-housekeeping" data-title="Καθαριότητα / Housekeeping" data-subtitle="Κατάσταση καθαριότητας, αναχωρήσεις και συντήρηση.">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Κατάσταση δωματίων</h2>
+              <p>Χρήσιμο για reception και προσωπικό καθαριότητας.</p>
+            </div>
+            <button class="ghost" id="markDeparturesDirtyBtn">Αναχωρήσεις → βρώμικα</button>
+          </div>
+          <div class="filters">
+            <label>Φίλτρο <select id="housekeepingFilter"><option value="">Όλα</option></select></label>
+            <label>Αναζήτηση <input type="search" id="housekeepingSearch" placeholder="Δωμάτιο ή σημείωση"></label>
+          </div>
+          <div class="table-wrap"><table id="housekeepingTable"></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-payments" data-title="Πληρωμές" data-subtitle="Καταχώρηση εισπράξεων, επιστροφών και υπολοίπων.">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Πληρωμές</h2>
+              <p>Οι προκαταβολές της κράτησης υπολογίζονται μαζί με τις πληρωμές.</p>
+            </div>
+            <button class="primary" id="newPaymentBtn">+ Νέα πληρωμή</button>
+          </div>
+          <div class="filters">
+            <label>Κράτηση/Πελάτης <input type="search" id="paymentSearch" placeholder="ID, πελάτης, μέθοδος"></label>
+            <label>Από <input type="date" id="paymentFromFilter"></label>
+            <label>Έως <input type="date" id="paymentToFilter"></label>
+          </div>
+          <div class="table-wrap"><table id="paymentsTable"></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-reports" data-title="Αναφορές" data-subtitle="Μηνιαία πληρότητα, έσοδα, ADR και υπόλοιπα.">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Οικονομικά και πληρότητα</h2>
+              <p>Ενδεικτικά KPIs για γρήγορη εικόνα λειτουργίας.</p>
+            </div>
+            <div class="actions-row">
+              <button class="ghost" id="exportCsvBtn">Εξαγωγή CSV</button>
+              <button class="ghost" id="printReportsBtn">Εκτύπωση</button>
+            </div>
+          </div>
+          <div class="filters">
+            <label>Έτος <input type="number" id="reportYear" min="2020" max="2100"></label>
+            <button class="primary" id="refreshReportsBtn">Ανανέωση</button>
+          </div>
+          <div class="table-wrap"><table id="reportsTable"></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-settings" data-title="Ρυθμίσεις" data-subtitle="Στοιχεία ξενοδοχείου, backup, εισαγωγή/εξαγωγή δεδομένων.">
+        <div class="grid two">
+          <article class="panel">
+            <div class="panel-head"><h2>Στοιχεία ξενοδοχείου</h2></div>
+            <form id="hotelSettingsForm" class="settings-form">
+              <label>Όνομα ξενοδοχείου <input type="text" id="hotelName" required></label>
+              <label>Τηλέφωνο <input type="text" id="hotelPhone"></label>
+              <label>Email <input type="email" id="hotelEmail"></label>
+              <label>Νόμισμα <input type="text" id="hotelCurrency" maxlength="4" required></label>
+              <label>Check-in <input type="time" id="hotelCheckIn"></label>
+              <label>Check-out <input type="time" id="hotelCheckOut"></label>
+              <button class="primary" type="submit">Αποθήκευση</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><h2>Backup / Μεταφορά</h2></div>
+            <div class="backup-actions">
+              <button class="primary" id="exportDataBtn">Εξαγωγή JSON backup</button>
+              <label class="file-label">Εισαγωγή JSON backup
+                <input type="file" id="importDataInput" accept="application/json,.json">
+              </label>
+              <button class="ghost danger" id="resetDemoBtn">Επαναφορά demo δεδομένων</button>
+              <button class="ghost danger" id="clearAllBtn">Διαγραφή όλων</button>
+            </div>
+            <div class="note">
+              Τα δεδομένα αποθηκεύονται τοπικά στον browser. Για χρήση από πολλές συσκευές απαιτείται backend/database, π.χ. Supabase ή Firebase.
+            </div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head"><h2>Οδηγίες γρήγορης χρήσης</h2></div>
+          <ol class="help-list">
+            <li>Πρώτα πέρασε τα πραγματικά δωμάτια από την καρτέλα <strong>Δωμάτια</strong>.</li>
+            <li>Καταχώρησε κράτηση από το κουμπί <strong>Νέα κράτηση</strong>. Η εφαρμογή μπλοκάρει τη διπλοκράτηση ίδιου δωματίου.</li>
+            <li>Έλεγχε την εικόνα από το <strong>Ημερολόγιο</strong> και το <strong>Dashboard</strong>.</li>
+            <li>Κάνε συχνά <strong>Εξαγωγή JSON backup</strong>, ειδικά πριν αλλάξεις συσκευή ή browser.</li>
+          </ol>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="bookingDialog" class="modal">
+    <form method="dialog" id="bookingForm" class="modal-card">
+      <div class="modal-head">
+        <h2 id="bookingDialogTitle">Νέα κράτηση</h2>
+        <button class="icon-btn" value="cancel" aria-label="Κλείσιμο">×</button>
+      </div>
+      <input type="hidden" id="bookingId">
+      <div class="form-grid">
+        <label>Πελάτης <input type="text" id="guestName" required></label>
+        <label>Τηλέφωνο <input type="tel" id="guestPhone"></label>
+        <label>Email <input type="email" id="guestEmail"></label>
+        <label>Πηγή κράτησης
+          <select id="bookingSource"></select>
+        </label>
+        <label>Δωμάτιο
+          <select id="bookingRoom" required></select>
+        </label>
+        <label>Κατάσταση
+          <select id="bookingStatus" required></select>
+        </label>
+        <label>Άφιξη <input type="date" id="bookingArrival" required></label>
+        <label>Αναχώρηση <input type="date" id="bookingDeparture" required></label>
+        <label>Άτομα <input type="number" id="bookingGuests" min="1" value="1" required></label>
+        <label>Τιμή/νύχτα <input type="number" id="bookingRate" min="0" step="0.01" required></label>
+        <label>Προκαταβολή <input type="number" id="bookingDeposit" min="0" step="0.01" value="0"></label>
+        <label>Σημείωση <textarea id="bookingNotes" rows="3"></textarea></label>
+      </div>
+      <div class="computed-box" id="bookingComputed"></div>
+      <div class="modal-actions">
+        <button class="ghost" value="cancel" type="button" id="cancelBookingBtn">Άκυρο</button>
+        <button class="ghost danger hidden" type="button" id="deleteBookingBtn">Διαγραφή</button>
+        <button class="primary" type="submit">Αποθήκευση</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="roomDialog" class="modal">
+    <form method="dialog" id="roomForm" class="modal-card">
+      <div class="modal-head">
+        <h2 id="roomDialogTitle">Νέο δωμάτιο</h2>
+        <button class="icon-btn" value="cancel" aria-label="Κλείσιμο">×</button>
+      </div>
+      <input type="hidden" id="roomOriginalId">
+      <div class="form-grid">
+        <label>Αριθμός δωματίου <input type="text" id="roomId" required></label>
+        <label>Τύπος <input type="text" id="roomType" list="roomTypesList" required></label>
+        <datalist id="roomTypesList"></datalist>
+        <label>Όροφος <input type="text" id="roomFloor"></label>
+        <label>Κλίνες <input type="number" id="roomBeds" min="1" value="2"></label>
+        <label>Μέγιστα άτομα <input type="number" id="roomCapacity" min="1" value="2"></label>
+        <label>Βασική τιμή <input type="number" id="roomRate" min="0" step="0.01" value="60"></label>
+        <label>Λειτουργία
+          <select id="roomStatus"></select>
+        </label>
+        <label>Καθαριότητα
+          <select id="roomHousekeeping"></select>
+        </label>
+        <label>Σημείωση <textarea id="roomNotes" rows="3"></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" value="cancel" type="button" id="cancelRoomBtn">Άκυρο</button>
+        <button class="ghost danger hidden" type="button" id="deleteRoomBtn">Διαγραφή</button>
+        <button class="primary" type="submit">Αποθήκευση</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="paymentDialog" class="modal">
+    <form method="dialog" id="paymentForm" class="modal-card">
+      <div class="modal-head">
+        <h2 id="paymentDialogTitle">Νέα πληρωμή</h2>
+        <button class="icon-btn" value="cancel" aria-label="Κλείσιμο">×</button>
+      </div>
+      <input type="hidden" id="paymentId">
+      <div class="form-grid">
+        <label>Κράτηση
+          <select id="paymentBooking" required></select>
+        </label>
+        <label>Ημερομηνία <input type="date" id="paymentDate" required></label>
+        <label>Τύπος
+          <select id="paymentType" required>
+            <option value="payment">Είσπραξη</option>
+            <option value="refund">Επιστροφή</option>
+          </select>
+        </label>
+        <label>Μέθοδος
+          <select id="paymentMethod"></select>
+        </label>
+        <label>Ποσό <input type="number" id="paymentAmount" min="0" step="0.01" required></label>
+        <label>Σημείωση <textarea id="paymentNotes" rows="3"></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" value="cancel" type="button" id="cancelPaymentBtn">Άκυρο</button>
+        <button class="ghost danger hidden" type="button" id="deletePaymentBtn">Διαγραφή</button>
+        <button class="primary" type="submit">Αποθήκευση</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="emptyTemplate">
+    <div class="empty-state">Δεν υπάρχουν δεδομένα.</div>
+  </template>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
